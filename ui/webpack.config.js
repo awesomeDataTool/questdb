@@ -105,6 +105,10 @@ module.exports = {
         loader: "babel-loader",
       },
       {
+        test: /\.worker\.(ts|js)$/,
+        loaders: ["worker-loader", "babel-loader"],
+      },
+      {
         test: /\.css$/i,
         use: [MiniCssExtractPlugin.loader, "css-loader"],
       },
