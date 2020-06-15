@@ -1222,7 +1222,6 @@ public class PGConnectionContext implements IOContext, Mutable {
         final Object statement = factoryCache.peek(queryText);
         if (statement == null) {
             CompiledQuery cc = compiler.compile(queryText, sqlExecutionContext);
-
             if (cc.getType() == CompiledQuery.SELECT) {
                 final RecordCursorFactory factory = cc.getRecordCursorFactory();
                 factoryCache.put(queryText, factory);

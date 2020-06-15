@@ -129,6 +129,8 @@ public interface CairoConfiguration {
 
     TextConfiguration getTextConfiguration();
 
+    boolean getTelemetryEnabled();
+
     long getWorkStealTimeoutNanos();
 
     boolean isParallelIndexingEnabled();

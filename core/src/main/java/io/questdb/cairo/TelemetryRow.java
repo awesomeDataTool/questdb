@@ -22,34 +22,28 @@
  *
  ******************************************************************************/
 
-package io.questdb.griffin;
+package io.questdb.cairo;
 
-import io.questdb.cairo.sql.InsertStatement;
-import io.questdb.cairo.sql.RecordCursorFactory;
-import io.questdb.cutlass.text.TextLoader;
+public final class TelemetryRow {
+    final private long ts;
+    final private CharSequence id;
+    final private short event;
 
-public interface CompiledQuery {
-    short SELECT = 0;
-    short INSERT = 1;
-    short TRUNCATE = 2;
-    short ALTER = 3;
-    short REPAIR = 4;
-    short SET = 5;
-    short DROP = 6;
-    short COPY_LOCAL = 7;
-    short CREATE_TABLE = 8;
-    short INSERT_AS_SELECT = 9;
-    short COPY_REMOTE = 10;
-    short RENAME_TABLE = 11;
-    short BACKUP_TABLE = 12;
-    short SHOW_TABLES = 13;
-    short SHOW_COLUMNS = 14;
+    public TelemetryRow(long ts, CharSequence id, short event) {
+        this.ts = ts;
+        this.id = id;
+        this.event = event;
+    }
 
-    RecordCursorFactory getRecordCursorFactory();
+    public final long getTs() {
+        return ts;
+    }
 
-    InsertStatement getInsertStatement();
+    public final CharSequence getId() {
+        return id;
+    }
 
-    TextLoader getTextLoader();
-
-    short getType();
+    public final short getEvent() {
+        return event;
+    }
 }

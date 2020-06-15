@@ -265,6 +265,11 @@ public class DefaultCairoConfiguration implements CairoConfiguration {
     }
 
     @Override
+    public boolean getTelemetryEnabled() {
+        return true;
+    }
+
+    @Override
     public TextConfiguration getTextConfiguration() {
         return textConfiguration;
     }

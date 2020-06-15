@@ -35,6 +35,8 @@ import io.questdb.cairo.pool.PoolListener;
 import io.questdb.cairo.pool.ReaderPool;
 import io.questdb.cairo.pool.WriterPool;
 import io.questdb.cairo.sql.ReaderOutOfDateException;
+import io.questdb.griffin.model.CreateTableModel;
+import io.questdb.griffin.model.ExpressionNode;
 import io.questdb.log.Log;
 import io.questdb.log.LogFactory;
 import io.questdb.mp.SynchronizedJob;
@@ -44,13 +46,19 @@ import io.questdb.std.Misc;
 import io.questdb.std.Transient;
 import io.questdb.std.microtime.MicrosecondClock;
 import io.questdb.std.str.Path;
+import io.questdb.std.time.MillisecondClock;
+
+import java.util.ArrayDeque;
 
 public class CairoEngine implements Closeable {
     private static final Log LOG = LogFactory.getLog(CairoEngine.class);
+    private final CharSequence telemetryTableName = "telemetry";
 
     private final WriterPool writerPool;
     private final ReaderPool readerPool;
     private final CairoConfiguration configuration;
+    private final TelemetryWriterJob telemetryWriterJob;
+    private final ArrayDeque<TelemetryRow> telemetryRowQueue;
     private final WriterMaintenanceJob writerMaintenanceJob;
     private final MessageBus messageBus;
 
@@ -62,8 +70,16 @@ public class CairoEngine implements Closeable {
         this.configuration = configuration;
         this.writerPool = new WriterPool(configuration, messageBus);
         this.readerPool = new ReaderPool(configuration);
+        this.telemetryRowQueue = new ArrayDeque<>();
         this.writerMaintenanceJob = new WriterMaintenanceJob(configuration);
         this.messageBus = messageBus;
+        createTelemetryTable();
+        this.telemetryWriterJob = new TelemetryWriterJob(configuration);
+        storeTelemetry(TelemetryEvent.UP);
+    }
+
+    public TelemetryWriterJob getTelemetryWriterJob() {
+        return telemetryWriterJob;
     }
 
     public WriterMaintenanceJob getWriterMaintenanceJob() {
@@ -72,6 +88,8 @@ public class CairoEngine implements Closeable {
 
     @Override
     public void close() {
+        storeTelemetry(TelemetryEvent.DOWN);
+        telemetryWriterJob.close();
         Misc.free(writerPool);
         Misc.free(readerPool);
     }
@@ -218,12 +236,12 @@ public class CairoEngine implements Closeable {
     public boolean releaseAllWriters () {
         return writerPool.releaseAll();
     }
-    
-	public boolean releaseInactive() {
-		boolean useful = writerPool.releaseInactive();
-		useful |= readerPool.releaseInactive();
-		return useful;
-	}
+
+    public boolean releaseInactive() {
+        boolean useful = writerPool.releaseInactive();
+        useful |= readerPool.releaseInactive();
+        return useful;
+    }
 
     public void remove(
             CairoSecurityContext securityContext,
@@ -307,6 +325,93 @@ public class CairoEngine implements Closeable {
             int error = ff.errno();
             LOG.error().$("rename failed [from='").$(path).$("', to='").$(otherPath).$("', error=").$(error).$(']').$();
             throw CairoException.instance(error).put("Rename failed");
+        }
+    }
+
+    private final void createTelemetryTable() {
+        final Path path = new Path();
+        final FilesFacade ff = configuration.getFilesFacade();
+        final CharSequence root = configuration.getRoot();
+
+        try {
+            if (TableUtils.exists(ff, path, root, telemetryTableName, 0, telemetryTableName.length()) == TableUtils.TABLE_DOES_NOT_EXIST) {
+                final CreateTableModel telemetry = CreateTableModel.FACTORY.newInstance();
+                final ExpressionNode name = ExpressionNode.FACTORY.newInstance();
+                final AppendMemory appendMem = new AppendMemory();
+
+                try {
+                    name.of(ExpressionNode.OPERATION, telemetryTableName, 0, 0);
+                    telemetry.setName(name);
+                    telemetry.addColumn("ts", ColumnType.TIMESTAMP, configuration.getDefaultSymbolCapacity());
+                    telemetry.addColumn("id", ColumnType.STRING, configuration.getDefaultSymbolCapacity());
+                    telemetry.addColumn("event", ColumnType.SHORT, configuration.getDefaultSymbolCapacity());
+
+                    TableUtils.createTable(
+                            ff,
+                            appendMem,
+                            path,
+                            root,
+                            telemetry,
+                            configuration.getMkDirMode()
+                    );
+                } finally {
+                    appendMem.close();
+                }
+            }
+        } finally {
+            path.close();
+        }
+    }
+
+    public final void storeTelemetry(short event) {
+        final MicrosecondClock clock = configuration.getMicrosecondClock();
+        final CharSequence id = "dummy-id";
+
+        // @todo: fix this before Vlad finds out (LongList?)
+        telemetryRowQueue.push(new TelemetryRow(clock.getTicks(), id, event));
+    }
+
+    private class TelemetryWriterJob extends SynchronizedJob implements Closeable {
+        // private final TableWriter writer;
+        private final MillisecondClock clock;
+        private final long checkInterval = 1 * 60 * 1000L;
+        private long last = 0;
+
+        public TelemetryWriterJob(CairoConfiguration configuration) {
+            // this.writer = new TableWriter(configuration, telemetryTableName);
+            this.clock = configuration.getMillisecondClock();
+        }
+
+        protected boolean doRun() {
+            // while (telemetryRowQueue.size() > 0) {
+            //     final TelemetryRow telemetryRow = telemetryRowQueue.pollLast();
+            //     final TableWriter.Row row = writer.newRow();
+
+            //     row.putDate(0, telemetryRow.getTs());
+            //     row.putStr(1, telemetryRow.getId());
+            //     row.putShort(2, telemetryRow.getEvent());
+            //     row.append();
+            // }
+
+            // writer.commit();
+
+            return true;
+        }
+
+        @Override
+        protected boolean runSerially() {
+            long t = clock.getTicks();
+            if (last + checkInterval < t) {
+                last = t;
+                return doRun();
+            }
+            return false;
+        }
+
+        @Override
+        public void close() {
+            doRun();
+            // writer.close();
         }
     }
 
