@@ -51,8 +51,6 @@ import io.questdb.std.Transient;
 import io.questdb.std.microtime.MicrosecondClock;
 import io.questdb.std.str.Path;
 
-import java.util.ArrayDeque;
-
 public class CairoEngine implements Closeable {
     private static final Log LOG = LogFactory.getLog(CairoEngine.class);
 
@@ -61,8 +59,8 @@ public class CairoEngine implements Closeable {
     private final CairoConfiguration configuration;
     private final WriterMaintenanceJob writerMaintenanceJob;
     private final RingQueue<TelemetryRow> telemetryQueue;
-    private final LongObjHashMap<SPSequence> telemetryPublishers;
     private final MCSequence telemetrySubSeq;
+    private final LongObjHashMap<SPSequence> telemetryPublishers;
     private final MessageBus messageBus;
 
     private TelemetryWriterJob telemetryWriterJob;
@@ -89,7 +87,7 @@ public class CairoEngine implements Closeable {
     @Override
     public void close() {
         storeTelemetry(TelemetryEvent.DOWN);
-        telemetryWriterJob.close();
+        Misc.free(telemetryWriterJob);
         Misc.free(writerPool);
         Misc.free(readerPool);
     }
@@ -288,16 +286,16 @@ public class CairoEngine implements Closeable {
 
     public final void storeTelemetry(short event) {
         long thread = Thread.currentThread().getId();
-
         final int keyIndex = telemetryPublishers.keyIndex(thread);
-        if (keyIndex > 0) {
-            final SPSequence telemetryPub = new SPSequence(configuration.getTelemetryQueueCapacity());
-            telemetryPublishers.putAt(keyIndex, thread, telemetryPub);
-            telemetryPub.then(telemetrySubSeq);
-            publishTelemetry(event, telemetryPub);
+
+        if (keyIndex < 0) {
+            final SPSequence publisher = telemetryPublishers.valueAt(keyIndex);
+            publishTelemetry(event, publisher);
         } else {
-            final SPSequence telemetryPub = telemetryPublishers.get(keyIndex);
-            publishTelemetry(event, telemetryPub);
+            final SPSequence publisher = new SPSequence(configuration.getTelemetryQueueCapacity());
+            telemetryPublishers.putAt(keyIndex, thread, publisher);
+            publisher.then(telemetrySubSeq);
+            publishTelemetry(event, publisher);
         }
     }
 
@@ -327,7 +325,7 @@ public class CairoEngine implements Closeable {
                     final ExpressionNode name = ExpressionNode.FACTORY.newInstance();
                     final AppendMemory appendMem = new AppendMemory();
 
-                    name.of(ExpressionNode.OPERATION, telemetryTableName, 0, 0);
+                    name.of(ExpressionNode.OPERATION, telemetryTableName, 0, telemetryTableName.length());
                     telemetry.setName(name);
                     telemetry.addColumn("ts", ColumnType.TIMESTAMP, configuration.getDefaultSymbolCapacity());
                     telemetry.addColumn("id", ColumnType.STRING, configuration.getDefaultSymbolCapacity());
