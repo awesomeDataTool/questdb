@@ -39,7 +39,6 @@ import io.questdb.griffin.model.CreateTableModel;
 import io.questdb.griffin.model.ExpressionNode;
 import io.questdb.log.Log;
 import io.questdb.log.LogFactory;
-
 import io.questdb.mp.*;
 import io.questdb.std.Files;
 import io.questdb.std.FilesFacade;
@@ -181,8 +180,7 @@ public class CairoEngine implements Closeable {
     ) {
         securityContext.checkWritePermission();
         // There is no point in pooling/caching these writers since they are only used once, backups are not incremental
-        return new TableWriter(configuration, tableName, messageBus, true, DefaultLifecycleManager.INSTANCE,
-                backupDirName);
+        return new TableWriter(configuration, tableName, messageBus, true, DefaultLifecycleManager.INSTANCE, backupDirName);
     }
 
     public boolean lock(
