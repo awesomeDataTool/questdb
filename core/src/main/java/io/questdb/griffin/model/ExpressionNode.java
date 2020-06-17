@@ -33,7 +33,7 @@ import io.questdb.std.str.CharSink;
 
 public class ExpressionNode implements Mutable, Sinkable {
 
-    public final static ObjectFactory<ExpressionNode> FACTORY = new ExpressionNodeFactory();
+    public final static ExpressionNodeFactory FACTORY = new ExpressionNodeFactory();
     public static final int OPERATION = 1;
     public static final int CONSTANT = 2;
     public static final int LITERAL = 4;
@@ -56,7 +56,6 @@ public class ExpressionNode implements Mutable, Sinkable {
     private ExpressionNode() {
     }
 
-    @Override
     public void clear() {
         args.clear();
         token = null;
