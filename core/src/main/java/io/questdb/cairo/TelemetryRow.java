@@ -25,25 +25,7 @@
 package io.questdb.cairo;
 
 public final class TelemetryRow {
-    final private long ts;
-    final private CharSequence id;
-    final private short event;
-
-    public TelemetryRow(long ts, CharSequence id, short event) {
-        this.ts = ts;
-        this.id = id;
-        this.event = event;
-    }
-
-    public final long getTs() {
-        return ts;
-    }
-
-    public final CharSequence getId() {
-        return id;
-    }
-
-    public final short getEvent() {
-        return event;
-    }
+    public long ts;
+    public CharSequence id;
+    public short event;
 }

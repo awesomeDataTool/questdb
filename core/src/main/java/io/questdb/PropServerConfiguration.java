@@ -141,6 +141,7 @@ public class PropServerConfiguration implements ServerConfiguration {
     private final int floatToStrCastScale;
     private final int doubleToStrCastScale;
     private final boolean telemetryEnabled;
+    private final int telemetryQueueCapacity;
     private boolean httpAllowDeflateBeforeSend;
     private int[] httpWorkerAffinity;
     private int connectionPoolInitialCapacity;
@@ -326,6 +327,7 @@ public class PropServerConfiguration implements ServerConfiguration {
         this.sqlGroupByMapCapacity = getInt(properties, "cairo.sql.groupby.map.capacity", 1024);
         this.sqlGroupByPoolCapacity = getInt(properties, "cairo.sql.groupby.pool.capacity", 1024);
         this.telemetryEnabled = getBoolean(properties, "cairo.telemetry.enabled", true);
+        this.telemetryQueueCapacity = getInt(properties, "cairo.telemetry.queue.capacity", 512);
         final String sqlCopyFormatsFile = getString(properties, "cairo.sql.copy.formats.file", "/text_loader.json");
 
         final String dateLocale = getString(properties, "cairo.date.locale", "en");
@@ -1124,6 +1126,11 @@ public class PropServerConfiguration implements ServerConfiguration {
         @Override
         public boolean getTelemetryEnabled() {
             return telemetryEnabled;
+        }
+
+        @Override
+        public int getTelemetryQueueCapacity() {
+            return telemetryQueueCapacity;
         }
 
         @Override

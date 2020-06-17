@@ -131,6 +131,8 @@ public interface CairoConfiguration {
 
     boolean getTelemetryEnabled();
 
+    int getTelemetryQueueCapacity();
+
     long getWorkStealTimeoutNanos();
 
     boolean isParallelIndexingEnabled();

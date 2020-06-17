@@ -270,6 +270,11 @@ public class DefaultCairoConfiguration implements CairoConfiguration {
     }
 
     @Override
+    public int getTelemetryQueueCapacity() {
+        return 512;
+    }
+
+    @Override
     public TextConfiguration getTextConfiguration() {
         return textConfiguration;
     }
